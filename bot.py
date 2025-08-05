@@ -622,7 +622,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             [InlineKeyboardButton(subject, callback_data=f"toggle_{i}")]
         )
     # Initially, no subjects are selected -> show "Select All"
-    keyboard.append([InlineKeyboardButton("✅ Select All", callback_data="toggle_all")])
+    keyboard.append([InlineKeyboardButton("✅ Select All + Make Note", callback_data="toggle_all")])
     keyboard.append([InlineKeyboardButton("➡️ Proceed", callback_data="proceed")])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -665,7 +665,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 [InlineKeyboardButton(prefix + name, callback_data=f"toggle_{i}")]
             )
         all_selected = len(selected) == len(subject_list) and subject_list
-        toggle_label = "❌ Unselect All" if all_selected else "✅ Select All"
+        toggle_label = "❌ Unselect All (Don't Make Note)" if all_selected else "✅ Select All"
         keyboard.append([InlineKeyboardButton(toggle_label, callback_data="toggle_all")])
         keyboard.append([InlineKeyboardButton("➡️ Proceed", callback_data="proceed")])
         await query.edit_message_reply_markup(
@@ -691,7 +691,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 [InlineKeyboardButton(prefix + name, callback_data=f"toggle_{i}")]
             )
         all_selected = len(selected) == len(subject_list) and subject_list
-        toggle_label = "❌ Unselect All" if all_selected else "✅ Select All"
+        toggle_label = "❌ Unselect All (Don't Make Note)" if all_selected else "✅ Select All"
         keyboard.append([InlineKeyboardButton(toggle_label, callback_data="toggle_all")])
         keyboard.append([InlineKeyboardButton("➡️ Proceed", callback_data="proceed")])
         await query.edit_message_reply_markup(
