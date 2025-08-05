@@ -20,4 +20,4 @@ COPY bot.py /app/
 
 # Set the default command to run the bot.  Override the environment
 # variable BOT_TOKEN at runtime if you don't want to hard‑code it.
-CMD ["python", "telegram_bot.py"]
+CMD ["python", "-u", "bot.py"]
