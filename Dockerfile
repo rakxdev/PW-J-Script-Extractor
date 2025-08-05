@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 # Copy the bot source code into the image
-COPY telegram_bot.py /app/
+COPY bot.py /app/
 
 # Set the default command to run the bot.  Override the environment
 # variable BOT_TOKEN at runtime if you don't want to hard‑code it.
