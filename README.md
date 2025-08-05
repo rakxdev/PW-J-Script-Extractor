@@ -1,4 +1,4 @@
-# Telegram Link Extractor Bot
+# PW-J-Script-Extractor Bot
 
 This repository contains a Telegram bot that parses specially formatted
 batch (`.bat`) or text (`.txt`) files and extracts links to lectures,
@@ -175,5 +175,3 @@ idea, please open an issue or submit a patch.
 
 This project is provided without warranty under the terms of the MIT
 License.  See `LICENSE` for details if included, or assume MIT.
-
-```
