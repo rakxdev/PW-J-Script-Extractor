@@ -62,7 +62,7 @@ prevent unauthorised access.
 5. **Run the bot**:
 
    ```bash
-   python telegram_bot.py
+   python bot.py
    ```
 
 6. The bot will start polling for updates.  You can now send a `.bat`
