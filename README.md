@@ -87,10 +87,7 @@ to install Python and dependencies directly on your system.
 2. **Run the container**:
 
    ```bash
-   docker run -d --name link-extractor-bot \
-     -e BOT_TOKEN="<your-telegram-bot-token>" \
-     -e AUTHORIZED_USERS="user_id1,user_id2" \
-     telegram-link-extractor
+   docker run -d --name link-extractor-bot telegram-link-extractor
    ```
 
    * Replace `<your-telegram-bot-token>` with the token obtained from
