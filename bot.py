@@ -763,13 +763,20 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             logger.info(
                 f"Extracted subject: {subject} with {link_count} links"
             )
-            with open(path, "rb") as f:
-                await query.message.chat.send_document(
-                    document=f,
-                    filename=os.path.basename(path),
-                    caption=caption,
-                    parse_mode=ParseMode.MARKDOWN,
+
+            if link_count > 0:
+                with open(path, "rb") as f:
+                    await query.message.chat.send_document(
+                        document=f,
+                        filename=os.path.basename(path),
+                        caption=caption,
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
+            else:
+                await query.message.chat.send_message(
+                    f"⚠️ No links found for subject: `{subject}`"
                 )
+
             try:
                 os.remove(path)
             except Exception:
