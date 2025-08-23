@@ -34,7 +34,7 @@ prevent unauthorised access.
 1. **Clone the repository** (if you haven’t already):
 
    ```bash
-   git clone https://github.com/rakxdev/PW-J-Script-Extractor pwj-ext
+   git clone --branch Update-v2 --single-branch https://github.com/rakxdev/PW-J-Script-Extractor pwj-ext
    cd pwj-ext
    ```
 
