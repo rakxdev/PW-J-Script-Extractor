@@ -619,18 +619,17 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         summary_strings.append(f"{subj} ({count} links)")
     logger.info("Inspecting complete. Found subjects: " + ", ".join(summary_strings))
 
-    keyboard: List[List[InlineKeyboardButton]] = []
-    for i, subject in enumerate(subjects):
-        keyboard.append(
-            [InlineKeyboardButton(subject, callback_data=f"toggle_{i}")]
-        )
-    # Initially, no subjects are selected -> show "Select All"
-    keyboard.append([InlineKeyboardButton("✅ Select All", callback_data="toggle_all")])
-    keyboard.append([InlineKeyboardButton("➡️ Proceed", callback_data="proceed")])
+    keyboard = [
+        [
+            InlineKeyboardButton("📝 Links", callback_data="action_links"),
+            InlineKeyboardButton("📄 Notes", callback_data="action_notes"),
+        ],
+        [InlineKeyboardButton("❌ Close", callback_data="action_close")],
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     selection_msg = await update.message.reply_text(
-        "📚 Select subject(s) to extract:",
+        "✅ File processed successfully. Please choose an action:",
         reply_markup=reply_markup,
     )
     context.user_data["selection_msg_id"] = selection_msg.message_id
@@ -643,6 +642,89 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     await query.answer()
     cb_data = query.data
+
+    if cb_data == "action_links":
+        subject_list = context.user_data.get("subject_list", [])
+        selected: set = context.user_data.get("selected_subjects", set())
+
+        keyboard: List[List[InlineKeyboardButton]] = []
+        for i, name in enumerate(subject_list):
+            prefix = "✅ " if name in selected else ""
+            keyboard.append(
+                [InlineKeyboardButton(prefix + name, callback_data=f"toggle_{i}")]
+            )
+
+        all_selected = len(selected) == len(subject_list) and subject_list
+        toggle_label = "❌ Unselect All" if all_selected else "✅ Select All"
+        keyboard.append([InlineKeyboardButton(toggle_label, callback_data="toggle_all")])
+        keyboard.append([InlineKeyboardButton("➡️ Proceed", callback_data="proceed")])
+        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="action_back_to_main")])
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(
+            text="📚 Select subject(s) to extract links:",
+            reply_markup=reply_markup
+        )
+        return
+
+    elif cb_data == "action_notes":
+        await query.edit_message_text("⏳ Generating notes file, please wait...")
+        try:
+            batch_local_path = context.user_data.get("batch_local_path")
+            batch_base_name = context.user_data.get("batch_base", "batch")
+            if batch_local_path:
+                notes_data = parse_notes(Path(batch_local_path))
+                if not notes_data:
+                    await query.edit_message_text("⚠️ No notes found in the file.", reply_markup=None)
+                    context.user_data.clear()
+                    return
+
+                html_file_name = f"{sanitize_name(batch_base_name)}.html"
+                html_path = os.path.join("/tmp", html_file_name)
+                generate_notes_html(notes_data, Path(html_path), batch_base_name)
+
+                with open(html_path, "rb") as f:
+                    await query.message.chat.send_document(
+                        document=f,
+                        filename=os.path.basename(html_path),
+                        caption=f"📝 Notes for {batch_base_name}",
+                    )
+
+                await query.message.delete()
+
+                try:
+                    os.remove(html_path)
+                except Exception as e:
+                    logger.debug(f"Failed to delete temporary HTML file {html_path}: {e}")
+            else:
+                await query.edit_message_text("❌ Could not find the file path. Please send the file again.", reply_markup=None)
+
+        except Exception as e:
+            logger.exception(f"Failed to generate and send notes HTML: {e}")
+            await query.edit_message_text(f"❌ An error occurred while generating notes: {e}", reply_markup=None)
+
+        context.user_data.clear()
+        return
+
+    elif cb_data == "action_close":
+        await query.message.delete()
+        context.user_data.clear()
+        return
+
+    elif cb_data == "action_back_to_main":
+        keyboard = [
+            [
+                InlineKeyboardButton("📝 Links", callback_data="action_links"),
+                InlineKeyboardButton("📄 Notes", callback_data="action_notes"),
+            ],
+            [InlineKeyboardButton("❌ Close", callback_data="action_close")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(
+            "✅ File processed successfully. Please choose an action:",
+            reply_markup=reply_markup,
+        )
+        return
 
     # Toggle individual subjects (skip toggle_all)
     if cb_data.startswith("toggle_") and cb_data != "toggle_all":
@@ -671,6 +753,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         toggle_label = "❌ Unselect All" if all_selected else "✅ Select All"
         keyboard.append([InlineKeyboardButton(toggle_label, callback_data="toggle_all")])
         keyboard.append([InlineKeyboardButton("➡️ Proceed", callback_data="proceed")])
+        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="action_back_to_main")])
         await query.edit_message_reply_markup(
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -697,6 +780,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         toggle_label = "❌ Unselect All" if all_selected else "✅ Select All"
         keyboard.append([InlineKeyboardButton(toggle_label, callback_data="toggle_all")])
         keyboard.append([InlineKeyboardButton("➡️ Proceed", callback_data="proceed")])
+        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="action_back_to_main")])
         await query.edit_message_reply_markup(
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -705,17 +789,13 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     # Proceed with extraction
     if cb_data == "proceed":
         data = context.user_data.get("data")
-        selected: set = context.user_data.get("selected_subjects")
-        subject_list_full = context.user_data.get("subject_list", [])
-        # Determine if all subjects are selected (either explicitly or by default)
-        all_selected_flag = False
+        selected: set = context.user_data.get("selected_subjects", set())
+
         if not selected:
-            all_selected_flag = True
-        else:
-            all_selected_flag = len(selected) == len(subject_list_full)
-        subjects: List[str] = (
-            list(selected) if selected else subject_list_full
-        )
+            await query.answer("⚠️ Please select at least one subject to proceed.", show_alert=True)
+            return
+
+        subjects: List[str] = list(selected)
 
         # Summarize and log selected subjects
         summary_extract = []
@@ -736,7 +816,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
         # Inform user that extraction is happening
         extracting_msg = await query.message.chat.send_message(
-            "⏳ Extracting, please wait..."
+            "⏳ Extracting links, please wait..."
         )
         context.user_data["extract_msg_id"] = extracting_msg.message_id
 
@@ -752,19 +832,21 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                     link_count = sum(1 for _ in f)
             except Exception:
                 link_count = 0
-            safe_subject = subject.replace('`', "'")
-            safe_batch = batch_base.replace('`', "'")
-            caption_lines = [
-                f"📂 *Subject:* `{safe_subject}`",
-                f"📦 *Batch Name:* `{safe_batch}`",
-                f"🔗 *Total Links:* {link_count}",
-            ]
-            caption = "\n".join(caption_lines)
+
             logger.info(
                 f"Extracted subject: {subject} with {link_count} links"
             )
 
             if link_count > 0:
+                safe_subject = subject.replace('`', "'")
+                safe_batch = batch_base.replace('`', "'")
+                caption_lines = [
+                    f"📂 *Subject:* `{safe_subject}`",
+                    f"📦 *Batch Name:* `{safe_batch}`",
+                    f"🔗 *Total Links:* {link_count}",
+                ]
+                caption = "\n".join(caption_lines)
+
                 with open(path, "rb") as f:
                     await query.message.chat.send_document(
                         document=f,
@@ -782,29 +864,6 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             except Exception:
                 logger.debug(f"Failed to delete temporary file {path}")
 
-        # If all subjects were selected, also generate and send the notes HTML
-        if all_selected_flag:
-            try:
-                batch_local_path = context.user_data.get("batch_local_path")
-                batch_base_name = context.user_data.get("batch_base", "batch")
-                if batch_local_path:
-                    notes_data = parse_notes(Path(batch_local_path))
-                    html_file_name = f"{sanitize_name(batch_base_name)}.html"
-                    html_path = os.path.join("/tmp", html_file_name)
-                    generate_notes_html(notes_data, Path(html_path), batch_base_name)
-                    with open(html_path, "rb") as f:
-                        await query.message.chat.send_document(
-                            document=f,
-                            filename=os.path.basename(html_path),
-                            caption=f"📝 Notes for {batch_base_name}",
-                        )
-                    try:
-                        os.remove(html_path)
-                    except Exception:
-                        logger.debug(f"Failed to delete temporary HTML file {html_path}")
-            except Exception as e:
-                logger.exception(f"Failed to generate and send notes HTML: {e}")
-
         # Clean up extracting message and notify completion
         try:
             await context.bot.delete_message(
@@ -813,7 +872,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             )
         except Exception:
             logger.debug("Failed to delete extracting message (it may have been deleted)")
-        await query.message.chat.send_message("✅ Extraction complete.")
+        await query.message.chat.send_message("✅ Link extraction complete.")
 
         context.user_data.clear()
         return
