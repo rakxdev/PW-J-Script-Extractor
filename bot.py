@@ -48,13 +48,14 @@ from telegram.ext import (
 )
 
 # Configuration
-# TOKEN = "7760431264:AAEhbngfFwxMp2nmD6jzzYvPoBUPBMGW8e0"
-# AUTHORIZED_USERS = {
-#     7875474866,
-#     1955134660,
-#     1429154571,
-#     7073085399  # Replace with your numeric Telegram user IDs
-# }
+TOKEN = ""
+AUTHORIZED_USERS = {
+    7875474866,
+    1955134660,
+    1429154571,
+    7073085399,
+    8199712050  # Replace with your numeric Telegram user IDs
+}
 
 # Logging configuration
 logging.basicConfig(
