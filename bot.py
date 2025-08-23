@@ -330,10 +330,14 @@ def generate_notes_html(data: Dict[str, Dict[str, Dict[str, List[Tuple[str, str]
         }}
 
         header {{
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 30px;
             text-align: center;
-            padding: 30px 0;
             position: relative;
             margin-bottom: 30px;
+            border: 1px solid var(--border-primary);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
         }}
 
         .logo {{
