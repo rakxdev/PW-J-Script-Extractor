@@ -90,7 +90,7 @@ def parse_file(path: Path) -> Dict[str, Dict[str, Dict[str, List[Tuple[str, str]
 
     subject_pattern = re.compile(r"\[SUBJECT\]\s*(.+)")
     chapter_pattern = re.compile(r"\[CHAPTER\]\s*(.+)")
-    var_pattern = re.compile(r'set\s+"([^=]+)=([^"\n]+)"')
+    var_pattern = re.compile(r'set\s+"([^=]+)=(.+?)"')
     m3u8_pattern = re.compile(r'N_m3u8DL-RE\s+"(https?://[^"\s]+)"')
     pdf_pattern = re.compile(r'https?://[^"\s]+\.pdf')
 
@@ -199,7 +199,7 @@ def parse_notes(path: Path) -> Dict[str, Dict[str, Dict[str, List[Tuple[str, str
 
     subject_pattern = re.compile(r"\[SUBJECT\]\s*(.+)")
     chapter_pattern = re.compile(r"\[CHAPTER\]\s*(.+)")
-    var_pattern = re.compile(r'set\s+"([^=]+)=([^"\n]+)')
+    var_pattern = re.compile(r'set\s+"([^=]+)=(.+?)"')
     pdf_pattern = re.compile(r'https?://[^"\s]+\.pdf')
 
     for raw_line in text.splitlines():
