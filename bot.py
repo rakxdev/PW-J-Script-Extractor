@@ -264,6 +264,14 @@ SUBJECT_METADATA = {
     "Engineering Mechanics": {"icon": "fas fa-calculator", "desc": "Application of mechanics to solve engineering problems."}
 }
 
+CHAPTER_ICON_KEYWORDS = {
+    "Planner": "fas fa-calendar-alt",
+    "Practice": "fas fa-pencil-alt",
+    "GATE-O-PEDIA": "fas fa-graduation-cap",
+    "Quiz": "fas fa-question-circle",
+    "Notes": "fas fa-book-open"
+}
+
 def generate_notes_html(data: Dict[str, Dict[str, Dict[str, List[Tuple[str, str]]]]],
                         output_path: Path, batch_title: str) -> None:
     """Render a modern, modal-style HTML page of notes and DPP notes."""
@@ -283,6 +291,7 @@ def generate_notes_html(data: Dict[str, Dict[str, Dict[str, List[Tuple[str, str]
 
     notes_data_js = json.dumps(notes_json)
     subjects_metadata_js = json.dumps(SUBJECT_METADATA)
+    chapter_icons_js = json.dumps(CHAPTER_ICON_KEYWORDS)
 
     html_content = f"""
 <!DOCTYPE html>
@@ -883,6 +892,7 @@ def generate_notes_html(data: Dict[str, Dict[str, Dict[str, List[Tuple[str, str]
     <script>
         const notesData = {notes_data_js};
         const subjectMetadata = {subjects_metadata_js};
+        const chapterIcons = {chapter_icons_js};
 
         // DOM Elements
         const subjectsGrid = document.querySelector('.subjects-grid');
@@ -924,9 +934,10 @@ def generate_notes_html(data: Dict[str, Dict[str, Dict[str, List[Tuple[str, str]
                 Object.keys(chapters).forEach(chapterName => {{
                     const chapterCard = document.createElement('div');
                     chapterCard.className = 'chapter-card';
+                    const iconClass = getChapterIcon(chapterName);
                     chapterCard.innerHTML = `
                         <div class="chapter-icon">
-                            <i class="fas fa-folder-open"></i>
+                            <i class="${{iconClass}}"></i>
                         </div>
                         <div class="chapter-name">${{chapterName}}</div>
                     `;
@@ -938,6 +949,15 @@ def generate_notes_html(data: Dict[str, Dict[str, Dict[str, List[Tuple[str, str]
                 modalBody.innerHTML += '<p>No chapters found for this subject.</p>';
             }}
              modal.classList.add('show');
+        }}
+
+        function getChapterIcon(chapterName) {{
+            for (const keyword in chapterIcons) {{
+                if (chapterName.toLowerCase().includes(keyword.toLowerCase())) {{
+                    return chapterIcons[keyword];
+                }}
+            }}
+            return 'fas fa-folder-open'; // Default icon
         }}
 
         // Open chapter details
