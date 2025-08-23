@@ -27,6 +27,7 @@ import os
 import re
 import html
 import json
+import asyncio
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
@@ -863,6 +864,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 os.remove(path)
             except Exception:
                 logger.debug(f"Failed to delete temporary file {path}")
+
+            logger.info("Waiting for 7 seconds before next action...")
+            await asyncio.sleep(7)
 
         # Clean up extracting message and notify completion
         try:
