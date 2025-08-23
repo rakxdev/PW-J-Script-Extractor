@@ -8,8 +8,18 @@ plain‑text files containing just the lecture and DPP video links for
 each subject. If all subjects are selected, it also generates a
 modal‑style HTML document listing class notes and DPP notes.
 
-Requires python‑telegram‑bot >= 20.  Set `TOKEN` to your bot token and
-add your user IDs to `AUTHORIZED_USERS` for access control.
+Key features:
+* Shows an "inspecting" message during file analysis.
+* Lets you select individual subjects or toggle all with a single button.
+* Provides dynamic “Select/Unselect All” button behavior.
+* Displays clean logging (silences HTTP noise).
+* Sends .txt files with subject and link counts, and automatically
+  deletes temporary files after sending.
+* When all subjects are selected, generates an HTML notes file named
+  after the batch (e.g. `BatchName.html`) and sends it to the user.
+
+Requires python‑telegram‑bot >= 20.  Set `TOKEN` to your bot token and add
+your user IDs to `AUTHORIZED_USERS` for access control.
 """
 
 import logging
@@ -17,7 +27,6 @@ import os
 import re
 import html
 import json
-import asyncio  # <-- Added to allow delays between uploads
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
@@ -53,13 +62,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Silence extraneous logs from httpx and telegram internals
-for lib_name in [
-    "httpx",
-    "telegram.ext",
-    "telegram.ext.application",
-    "telegram.Application",
-]:
+# Silence external library logs
+for lib_name in ["httpx", "telegram.ext", "telegram.ext.application", "telegram.Application"]:
     logging.getLogger(lib_name).setLevel(logging.WARNING)
     logging.getLogger(lib_name).propagate = False
 logging.getLogger("httpcore").setLevel(logging.WARNING)
@@ -86,12 +90,13 @@ def parse_file(path: Path) -> Dict[str, Dict[str, Dict[str, List[Tuple[str, str]
 
     subject_pattern = re.compile(r"\[SUBJECT\]\s*(.+)")
     chapter_pattern = re.compile(r"\[CHAPTER\]\s*(.+)")
-    var_pattern = re.compile(r'set\s+"([^=]+)=([^"\n]+)"')
+    var_pattern = re.compile(r'set\s+"([^=]+)=(.+?)"')
     m3u8_pattern = re.compile(r'N_m3u8DL-RE\s+"(https?://[^"\s]+)"')
     pdf_pattern = re.compile(r'https?://[^"\s]+\.pdf')
 
     for raw_line in text.splitlines():
         line = remove_ansi(raw_line)
+
         m_subj = subject_pattern.search(line)
         if m_subj:
             current_subject = m_subj.group(1).strip()
@@ -177,9 +182,10 @@ def generate_output_files(
         paths.append(file_path)
     return paths
 
-# ----------- Note parsing and HTML generation -----------
+# ----------- Note parsing and HTML generation (from HTML Note Maker) -----------
 
 def parse_notes(path: Path) -> Dict[str, Dict[str, Dict[str, List[Tuple[str, str]]]]]:
+    """Parse notes and DPP notes from the batch file."""
     try:
         text = path.read_text(errors="ignore")
     except FileNotFoundError:
@@ -193,7 +199,7 @@ def parse_notes(path: Path) -> Dict[str, Dict[str, Dict[str, List[Tuple[str, str
 
     subject_pattern = re.compile(r"\[SUBJECT\]\s*(.+)")
     chapter_pattern = re.compile(r"\[CHAPTER\]\s*(.+)")
-    var_pattern = re.compile(r'set\s+"([^=]+)=([^"\n]+)')
+    var_pattern = re.compile(r'set\s+"([^=]+)=(.+?)"')
     pdf_pattern = re.compile(r'https?://[^"\s]+\.pdf')
 
     for raw_line in text.splitlines():
@@ -240,8 +246,7 @@ def parse_notes(path: Path) -> Dict[str, Dict[str, Dict[str, List[Tuple[str, str
 def generate_notes_html(data: Dict[str, Dict[str, Dict[str, List[Tuple[str, str]]]]],
                         output_path: Path, batch_title: str) -> None:
     """Render a modal‑style HTML page of notes and DPP notes."""
-
-    # Convert notes data to a JSON-friendly structure for the script
+    # Convert notes data to JSON-friendly structure
     notes_json: Dict[str, Dict[str, Dict[str, List[Dict[str, str]]]]] = {}
     for subject, chapters in data.items():
         notes_json[subject] = {}
@@ -257,7 +262,7 @@ def generate_notes_html(data: Dict[str, Dict[str, Dict[str, List[Tuple[str, str]
 
     notes_data_js = json.dumps(notes_json)
 
-    # Full CSS styles (you can keep the entire block from your original script)
+    # CSS styles (copied from the original note maker)
     style_block = """
     <style>
         body {
@@ -487,7 +492,7 @@ def generate_notes_html(data: Dict[str, Dict[str, Dict[str, List[Tuple[str, str]
     </script>
     """
 
-    # Build the HTML document
+    # Build the HTML
     html_parts: List[str] = []
     html_parts.append("<!DOCTYPE html>")
     html_parts.append("<html>\n<head>")
@@ -499,12 +504,22 @@ def generate_notes_html(data: Dict[str, Dict[str, Dict[str, List[Tuple[str, str]
     html_parts.append("    <h1>ɢᴇɴᴇʀᴀᴛᴇᴅ ʙʏ - ๏ ʟᴜᴍɪɴᴏ ⇗ ˣᵖ</h1>")
     html_parts.append(f"    <h2 class=\"batch-title\">{html.escape(batch_title)} - Notes</h2>")
     html_parts.append("    <a class=\"telegram-join-button\" href=\"https://t.me/luminoxpp\" target=\"_blank\">Join Telegram Channel</a>")
+    # Render subject buttons
     for subject in data:
-        safe_subject = subject.replace("'", "\\'")
-        html_parts.append(
-            f"    <button class=\"subject-button\" onclick=\"openSubject('{safe_subject}')\">{html.escape(subject)}</button>"
-        )
-    html_parts.append("</div>")
+        if subject == "Telegram Bot":
+            chapter_dict = next(iter(data[subject].values())) if data[subject] else {}
+            notes_list = chapter_dict.get("Notes", [])
+            bot_url = notes_list[0][1] if notes_list else "https://t.me/luminoxpp"
+            html_parts.append(
+                f"    <button class=\"subject-button\" onclick=\"window.open('{html.escape(bot_url)}', '_blank')\">{html.escape(subject)}</button>"
+            )
+        else:
+            safe_subject = subject.replace("'", "\\'")
+            html_parts.append(
+                f"    <button class=\"subject-button\" onclick=\"openSubject('{safe_subject}')\">{html.escape(subject)}</button>"
+            )
+    html_parts.append("</div>")  # container end
+    # Modal container
     html_parts.append(
         "<div id=\"notes-modal\" class=\"modal\">\n"
         "  <div class=\"modal-content\">\n"
@@ -522,10 +537,15 @@ def generate_notes_html(data: Dict[str, Dict[str, Dict[str, List[Tuple[str, str]
 async def ensure_authorized(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     user_id = update.effective_user.id
     if user_id not in AUTHORIZED_USERS:
+        logger.warning(f"Unauthorized access attempt by user {user_id}")
         if update.message:
-            await update.message.reply_text("❌ Sorry, you are not authorised to use this bot.")
+            await update.message.reply_text(
+                "❌ Sorry, you are not authorised to use this bot."
+            )
         elif update.callback_query:
-            await update.callback_query.answer("❌ You are not authorised to use this bot.", show_alert=True)
+            await update.callback_query.answer(
+                "❌ You are not authorised to use this bot.", show_alert=True
+            )
         return False
     return True
 
@@ -543,12 +563,16 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     document = update.message.document
     filename = document.file_name or "unknown"
-    logger.info(f"Received document from user {update.effective_user.id}: {filename}")
+    logger.info(
+        f"Received document from user {update.effective_user.id}: {filename}"
+    )
     if not filename.lower().endswith((".bat", ".txt")):
         await update.message.reply_text("⚠️ Only .bat or .txt files are supported.")
         return
 
-    inspecting_msg = await update.message.reply_text("🔍 Please wait while I inspect the file...")
+    inspecting_msg = await update.message.reply_text(
+        "🔍 Please wait while I inspect the file..."
+    )
     context.user_data["inspect_msg_id"] = inspecting_msg.message_id
     context.user_data["batch_name"] = filename
 
@@ -558,6 +582,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await file.download_to_drive(local_path)
     logger.info(f"Downloaded file to {local_path}")
 
+    # Save the local path and base name for later use (notes HTML)
     context.user_data["batch_local_path"] = local_path
     context.user_data["batch_base"] = os.path.splitext(filename)[0]
 
@@ -572,26 +597,39 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text("⚠️ No valid subjects found in the file.")
         return
 
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=context.user_data.get("inspect_msg_id"),
-    )
+    try:
+        await context.bot.delete_message(
+            chat_id=update.effective_chat.id,
+            message_id=context.user_data.get("inspect_msg_id"),
+        )
+    except Exception:
+        logger.debug("Failed to delete inspecting message (it may have been deleted)")
 
     context.user_data["data"] = data
     subjects = list(data.keys())
     context.user_data["subject_list"] = subjects
     context.user_data["selected_subjects"] = set()
 
-    # Build initial inline keyboard
-    keyboard: List[List[InlineKeyboardButton]] = []
-    for i, subject in enumerate(subjects):
-        keyboard.append([InlineKeyboardButton(subject, callback_data=f"toggle_{i}")])
-    keyboard.append([InlineKeyboardButton("✅ Select All", callback_data="toggle_all")])
-    keyboard.append([InlineKeyboardButton("➡️ Proceed", callback_data="proceed")])
+    # Log summary of subjects and counts
+    summary_strings: List[str] = []
+    for subj in subjects:
+        count = 0
+        for chapter in data[subj].values():
+            count += len(chapter.get("Lectures", [])) + len(chapter.get("DPP Videos", []))
+        summary_strings.append(f"{subj} ({count} links)")
+    logger.info("Inspecting complete. Found subjects: " + ", ".join(summary_strings))
+
+    keyboard = [
+        [
+            InlineKeyboardButton("📝 Links", callback_data="action_links"),
+            InlineKeyboardButton("📄 Notes", callback_data="action_notes"),
+        ],
+        [InlineKeyboardButton("❌ Close", callback_data="action_close")],
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     selection_msg = await update.message.reply_text(
-        "📚 Select subject(s) to extract:",
+        "✅ File processed successfully. Please choose an action:",
         reply_markup=reply_markup,
     )
     context.user_data["selection_msg_id"] = selection_msg.message_id
@@ -605,61 +643,187 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await query.answer()
     cb_data = query.data
 
+    if cb_data == "action_links":
+        subject_list = context.user_data.get("subject_list", [])
+        selected: set = context.user_data.get("selected_subjects", set())
+
+        keyboard: List[List[InlineKeyboardButton]] = []
+        for i, name in enumerate(subject_list):
+            prefix = "✅ " if name in selected else ""
+            keyboard.append(
+                [InlineKeyboardButton(prefix + name, callback_data=f"toggle_{i}")]
+            )
+
+        all_selected = len(selected) == len(subject_list) and subject_list
+        toggle_label = "❌ Unselect All" if all_selected else "✅ Select All"
+        keyboard.append([InlineKeyboardButton(toggle_label, callback_data="toggle_all")])
+        keyboard.append([InlineKeyboardButton("➡️ Proceed", callback_data="proceed")])
+        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="action_back_to_main")])
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(
+            text="📚 Select subject(s) to extract links:",
+            reply_markup=reply_markup
+        )
+        return
+
+    elif cb_data == "action_notes":
+        await query.edit_message_text("⏳ Generating notes file, please wait...")
+        try:
+            batch_local_path = context.user_data.get("batch_local_path")
+            batch_base_name = context.user_data.get("batch_base", "batch")
+            if batch_local_path:
+                notes_data = parse_notes(Path(batch_local_path))
+                if not notes_data:
+                    await query.edit_message_text("⚠️ No notes found in the file.", reply_markup=None)
+                    context.user_data.clear()
+                    return
+
+                html_file_name = f"{sanitize_name(batch_base_name)}.html"
+                html_path = os.path.join("/tmp", html_file_name)
+                generate_notes_html(notes_data, Path(html_path), batch_base_name)
+
+                with open(html_path, "rb") as f:
+                    await query.message.chat.send_document(
+                        document=f,
+                        filename=os.path.basename(html_path),
+                        caption=f"📝 Notes for {batch_base_name}",
+                    )
+
+                await query.message.delete()
+
+                try:
+                    os.remove(html_path)
+                except Exception as e:
+                    logger.debug(f"Failed to delete temporary HTML file {html_path}: {e}")
+            else:
+                await query.edit_message_text("❌ Could not find the file path. Please send the file again.", reply_markup=None)
+
+        except Exception as e:
+            logger.exception(f"Failed to generate and send notes HTML: {e}")
+            await query.edit_message_text(f"❌ An error occurred while generating notes: {e}", reply_markup=None)
+
+        context.user_data.clear()
+        return
+
+    elif cb_data == "action_close":
+        await query.message.delete()
+        context.user_data.clear()
+        return
+
+    elif cb_data == "action_back_to_main":
+        keyboard = [
+            [
+                InlineKeyboardButton("📝 Links", callback_data="action_links"),
+                InlineKeyboardButton("📄 Notes", callback_data="action_notes"),
+            ],
+            [InlineKeyboardButton("❌ Close", callback_data="action_close")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(
+            "✅ File processed successfully. Please choose an action:",
+            reply_markup=reply_markup,
+        )
+        return
+
+    # Toggle individual subjects (skip toggle_all)
     if cb_data.startswith("toggle_") and cb_data != "toggle_all":
         index = int(cb_data.split("_")[1])
         subject = context.user_data["subject_list"][index]
-        selected = context.user_data["selected_subjects"]
+        selected: set = context.user_data["selected_subjects"]
         if subject in selected:
             selected.remove(subject)
+            logger.info(
+                f"User {update.effective_user.id} deselected subject: {subject}"
+            )
         else:
             selected.add(subject)
+            logger.info(
+                f"User {update.effective_user.id} selected subject: {subject}"
+            )
 
         subject_list = context.user_data["subject_list"]
         keyboard: List[List[InlineKeyboardButton]] = []
         for i, name in enumerate(subject_list):
             prefix = "✅ " if name in selected else ""
-            keyboard.append([InlineKeyboardButton(prefix + name, callback_data=f"toggle_{i}")])
+            keyboard.append(
+                [InlineKeyboardButton(prefix + name, callback_data=f"toggle_{i}")]
+            )
         all_selected = len(selected) == len(subject_list) and subject_list
         toggle_label = "❌ Unselect All" if all_selected else "✅ Select All"
         keyboard.append([InlineKeyboardButton(toggle_label, callback_data="toggle_all")])
         keyboard.append([InlineKeyboardButton("➡️ Proceed", callback_data="proceed")])
-        await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard))
+        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="action_back_to_main")])
+        await query.edit_message_reply_markup(
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
         return
 
+    # Toggle all subjects at once
     if cb_data == "toggle_all":
         subject_list = context.user_data.get("subject_list", [])
-        selected = context.user_data["selected_subjects"]
+        selected: set = context.user_data["selected_subjects"]
         if len(selected) == len(subject_list) and subject_list:
             selected.clear()
+            logger.info(f"User {update.effective_user.id} deselected all subjects")
         else:
             selected.clear()
             selected.update(subject_list)
-        keyboard = []
+            logger.info(f"User {update.effective_user.id} selected all subjects")
+        keyboard: List[List[InlineKeyboardButton]] = []
         for i, name in enumerate(subject_list):
             prefix = "✅ " if name in selected else ""
-            keyboard.append([InlineKeyboardButton(prefix + name, callback_data=f"toggle_{i}")])
+            keyboard.append(
+                [InlineKeyboardButton(prefix + name, callback_data=f"toggle_{i}")]
+            )
         all_selected = len(selected) == len(subject_list) and subject_list
         toggle_label = "❌ Unselect All" if all_selected else "✅ Select All"
         keyboard.append([InlineKeyboardButton(toggle_label, callback_data="toggle_all")])
         keyboard.append([InlineKeyboardButton("➡️ Proceed", callback_data="proceed")])
-        await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard))
+        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="action_back_to_main")])
+        await query.edit_message_reply_markup(
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
         return
 
+    # Proceed with extraction
     if cb_data == "proceed":
         data = context.user_data.get("data")
-        selected = context.user_data.get("selected_subjects")
-        subject_list_full = context.user_data.get("subject_list", [])
-        all_selected_flag = not selected or len(selected) == len(subject_list_full)
-        subjects = list(selected) if selected else subject_list_full
+        selected: set = context.user_data.get("selected_subjects", set())
 
-        await query.message.delete()
+        if not selected:
+            await query.answer("⚠️ Please select at least one subject to proceed.", show_alert=True)
+            return
 
-        extracting_msg = await query.message.chat.send_message("⏳ Extracting, please wait...")
+        subjects: List[str] = list(selected)
+
+        # Summarize and log selected subjects
+        summary_extract = []
+        for subj in subjects:
+            cnt = 0
+            for chapter in data[subj].values():
+                cnt += len(chapter.get("Lectures", [])) + len(chapter.get("DPP Videos", []))
+            summary_extract.append(f"{subj} ({cnt} links)")
+        logger.info(
+            f"Starting extraction for subjects: {', '.join(summary_extract)}"
+        )
+
+        # Remove selection message
+        try:
+            await query.message.delete()
+        except Exception:
+            logger.debug("Failed to delete selection message (it may have been deleted)")
+
+        # Inform user that extraction is happening
+        extracting_msg = await query.message.chat.send_message(
+            "⏳ Extracting links, please wait..."
+        )
         context.user_data["extract_msg_id"] = extracting_msg.message_id
 
+        # Generate .txt files and send them
         out_paths = generate_output_files(data, subjects, "/tmp")
 
-        batch_name = context.user_data.get("batch_name", "batch")
+        batch_name: str = context.user_data.get("batch_name", "batch")
         batch_base = os.path.splitext(batch_name)[0]
 
         for subject, path in zip(subjects, out_paths):
@@ -668,65 +832,66 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                     link_count = sum(1 for _ in f)
             except Exception:
                 link_count = 0
-            safe_subject = subject.replace('`', "'")
-            safe_batch = batch_base.replace('`', "'")
-            caption_lines = [
-                f"📂 *Subject:* `{safe_subject}`",
-                f"📦 *Batch Name:* `{safe_batch}`",
-                f"🔗 *Total Links:* {link_count}",
-            ]
-            caption = "\n".join(caption_lines)
-            with open(path, "rb") as f:
-                await query.message.chat.send_document(
-                    document=f,
-                    filename=os.path.basename(path),
-                    caption=caption,
-                    parse_mode=ParseMode.MARKDOWN,
+
+            logger.info(
+                f"Extracted subject: {subject} with {link_count} links"
+            )
+
+            if link_count > 0:
+                safe_subject = subject.replace('`', "'")
+                safe_batch = batch_base.replace('`', "'")
+                caption_lines = [
+                    f"📂 *Subject:* `{safe_subject}`",
+                    f"📦 *Batch Name:* `{safe_batch}`",
+                    f"🔗 *Total Links:* {link_count}",
+                ]
+                caption = "\n".join(caption_lines)
+
+                with open(path, "rb") as f:
+                    await query.message.chat.send_document(
+                        document=f,
+                        filename=os.path.basename(path),
+                        caption=caption,
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
+            else:
+                await query.message.chat.send_message(
+                    f"⚠️ No links found for subject: `{subject}`"
                 )
+
             try:
                 os.remove(path)
             except Exception:
-                pass
+                logger.debug(f"Failed to delete temporary file {path}")
 
-            # Wait 5 seconds before sending the next file
-            await asyncio.sleep(5)
+        # Clean up extracting message and notify completion
+        try:
+            await context.bot.delete_message(
+                chat_id=query.message.chat.id,
+                message_id=context.user_data.get("extract_msg_id"),
+            )
+        except Exception:
+            logger.debug("Failed to delete extracting message (it may have been deleted)")
+        await query.message.chat.send_message("✅ Link extraction complete.")
 
-        if all_selected_flag:
-            try:
-                batch_local_path = context.user_data.get("batch_local_path")
-                batch_base_name = context.user_data.get("batch_base", "batch")
-                if batch_local_path:
-                    notes_data = parse_notes(Path(batch_local_path))
-                    html_file_name = f"{sanitize_name(batch_base_name)}.html"
-                    html_path = os.path.join("/tmp", html_file_name)
-                    generate_notes_html(notes_data, Path(html_path), batch_base_name)
-
-                    # Wait 5 seconds before sending the notes HTML
-                    await asyncio.sleep(5)
-
-                    with open(html_path, "rb") as f:
-                        await query.message.chat.send_document(
-                            document=f,
-                            filename=os.path.basename(html_path),
-                            caption=f"📝 Notes for {batch_base_name}",
-                        )
-                    os.remove(html_path)
-            except Exception as e:
-                logger.exception(f"Failed to generate and send notes HTML: {e}")
-
-        await context.bot.delete_message(
-            chat_id=query.message.chat.id,
-            message_id=context.user_data.get("extract_msg_id"),
-        )
-        await query.message.chat.send_message("✅ Extraction complete.")
         context.user_data.clear()
         return
 
 def main() -> None:
+    if TOKEN == "YOUR_BOT_TOKEN":
+        raise RuntimeError(
+            "Please set your Telegram bot token in the TOKEN variable before running."
+        )
+    if not AUTHORIZED_USERS:
+        logger.warning(
+            "The authorised user list is empty. Anyone will be able to use the bot."
+        )
+
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     app.add_handler(CallbackQueryHandler(handle_button))
+
     logger.info("Bot is starting...")
     app.run_polling()
 
