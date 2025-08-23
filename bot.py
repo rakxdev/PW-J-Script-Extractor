@@ -244,9 +244,29 @@ def parse_notes(path: Path) -> Dict[str, Dict[str, Dict[str, List[Tuple[str, str
 
     return data
 
+SUBJECT_METADATA = {
+    "Fluid Mechanics": {"icon": "fas fa-water", "desc": "Study of fluids at rest and in motion."},
+    "Hydraulic Machine": {"icon": "fas fa-wind", "desc": "Machines that use fluid power to do work."},
+    "Strength of Materials": {"icon": "fas fa-weight-hanging", "desc": "Behavior of solid objects subject to stresses and strains."},
+    "Heat transfer": {"icon": "fas fa-fire", "desc": "Generation, use, conversion, and exchange of thermal energy."},
+    "Material Science": {"icon": "fas fa-flask", "desc": "Design and discovery of new materials."},
+    "Theory of Machines and Vibrations": {"icon": "fas fa-cogs", "desc": "Study of the relative motion between the parts of a machine."},
+    "Basic Thermodynamics": {"icon": "fas fa-thermometer-half", "desc": "Relations between heat, work, and temperature."},
+    "Power Plant": {"icon": "fas fa-bolt", "desc": "Industrial facility for the generation of electric power."},
+    "I.C Engine": {"icon": "fas fa-car-battery", "desc": "Heat engine that combusts a substance with an oxidizer."},
+    "Refrigeration and Air Conditioning": {"icon": "fas fa-snowflake", "desc": "Technology of chilling spaces and preserving goods."},
+    "Renewable Sources of Energy": {"icon": "fas fa-solar-panel", "desc": "Energy collected from renewable resources."},
+    "Mechatronics": {"icon": "fas fa-robot", "desc": "Multidisciplinary branch of engineering."},
+    "Robotics": {"icon": "fas fa-microchip", "desc": "Design, construction, and use of robots."},
+    "Manufacturing Process": {"icon": "fas fa-industry", "desc": "Steps through which raw materials are transformed."},
+    "Machine Design": {"icon": "fas fa-drafting-compass", "desc": "Process of designing machines."},
+    "Industrial and Maintenance Engineering": {"icon": "fas fa-chart-line", "desc": "Optimization of complex processes or systems."},
+    "Engineering Mechanics": {"icon": "fas fa-calculator", "desc": "Application of mechanics to solve engineering problems."}
+}
+
 def generate_notes_html(data: Dict[str, Dict[str, Dict[str, List[Tuple[str, str]]]]],
                         output_path: Path, batch_title: str) -> None:
-    """Render a modal‑style HTML page of notes and DPP notes."""
+    """Render a modern, modal-style HTML page of notes and DPP notes."""
     # Convert notes data to JSON-friendly structure
     notes_json: Dict[str, Dict[str, Dict[str, List[Dict[str, str]]]]] = {}
     for subject, chapters in data.items():
@@ -262,276 +282,734 @@ def generate_notes_html(data: Dict[str, Dict[str, Dict[str, List[Tuple[str, str]
                     ]
 
     notes_data_js = json.dumps(notes_json)
+    subjects_metadata_js = json.dumps(SUBJECT_METADATA)
 
-    # CSS styles (copied from the original note maker)
-    style_block = """
+    html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>๏ ʟᴜᴍɪɴᴏ ⇗ ˣᵖ | Elegant Notes Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
+        :root {{
+            --primary: #0ff;
+            --secondary: #f0f;
+            --accent: #ff0;
+            --dark: #0a0a1a;
+            --darker: #050510;
+            --light: #e0e0ff;
+            --card-bg: rgba(15, 15, 35, 0.7);
+            --border-primary: rgba(0, 255, 255, 0.3);
+            --border-secondary: rgba(255, 0, 255, 0.3);
+            --text-primary: #e0f7ff;
+            --text-secondary: #c0d0e0;
+        }}
+
+        * {{
             margin: 0;
             padding: 0;
-            background: linear-gradient(to right, #e0c3fc, #8ec5fc);
-            color: #2c3e50;
-        }
-        .container {
-            max-width: 1000px;
-            margin: 50px auto;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-        }
-        h1 {
-            font-size: 2.4em;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }}
+
+        body {{
+            background: linear-gradient(135deg, var(--darker), #1a1a2e);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+            background-attachment: fixed;
+            overflow-x: hidden;
+        }}
+
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+        }}
+
+        header {{
             text-align: center;
-            font-weight: bold;
-            color: #111827;
+            padding: 30px 0;
             position: relative;
-            margin: 0 auto 20px;
-        }
-        h1::after {
+            margin-bottom: 30px;
+        }}
+
+        .logo {{
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            color: var(--primary);
+            filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.4));
+        }}
+
+        h1 {{
+            font-size: 2.4rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }}
+
+        .batch-title {{
+            font-size: 1.2rem;
+            color: var(--accent);
+            margin-bottom: 25px;
+            font-weight: 500;
+        }}
+
+        .telegram-join-button {{
+            display: inline-flex;
+            align-items: center;
+            padding: 14px 30px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            color: var(--darker);
+            font-weight: bold;
+            font-size: 1.1rem;
+            border-radius: 50px;
+            text-decoration: none;
+            margin: 20px 0 40px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }}
+
+        .telegram-join-button:hover {{
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3);
+        }}
+
+        .telegram-join-button i {{
+            margin-right: 10px;
+        }}
+
+        .subjects-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }}
+
+        .subject-card {{
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-secondary);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }}
+
+        .subject-card::before {{
             content: '';
             position: absolute;
+            top: 0;
             left: 0;
-            right: 0;
-            bottom: -6px;
-            height: 4px;
-            background: linear-gradient(to right, #3b82f6, #a855f7);
-            border-radius: 2px;
-        }
-        .batch-title {
-            text-align: center;
-            font-size: 1.6em;
-            font-weight: bold;
-            color: #7b2cbf;
-            margin-bottom: 20px;
-        }
-        .subject-button {
-            display: block;
             width: 100%;
-            text-align: left;
-            padding: 14px 20px;
-            margin: 10px 0;
-            background-color: #e1bee7;
-            border: none;
-            border-left: 6px solid #9c27b0;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: bold;
-            color: #3f51b5;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .subject-button:hover {
-            background-color: #d1c4e9;
-        }
-        .telegram-join-button {
+            height: 4px;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+        }}
+
+        .subject-card:hover {{
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }}
+
+        .subject-icon {{
+            font-size: 2.2rem;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }}
+
+        .subject-name {{
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--light);
+        }}
+
+        .subject-desc {{
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }}
+
+        .chapter-count {{
             display: inline-block;
-            padding: 12px 24px;
-            background: linear-gradient(to right, #42a5f5, #7e57c2);
-            color: white;
-            font-weight: bold;
-            border-radius: 10px;
-            text-decoration: none;
-            margin-top: 30px;
-            box-shadow: 0 6px 16px rgba(126, 87, 194, 0.4);
-            transition: background 0.3s;
-        }
-        .telegram-join-button:hover {
-            background: linear-gradient(to right, #1e88e5, #5e35b1);
-        }
-        /* Modal styles */
-        .modal {
+            background: rgba(0, 255, 255, 0.1);
+            color: var(--primary);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }}
+
+        /* Modal Styles */
+        .modal {{
             display: none;
             position: fixed;
-            z-index: 1000;
-            left: 0;
             top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            overflow: auto;
-            background-color: rgba(0, 0, 0, 0.4);
-        }
-        .modal.show {
-            display: block;
-        }
-        .modal-content {
-            background-color: #fff;
-            margin: 10% auto;
-            padding: 20px 30px;
-            border: 1px solid #888;
-            width: 80%;
-            max-width: 800px;
-            border-radius: 10px;
-            position: relative;
-        }
-        .close {
-            position: absolute;
-            right: 15px;
-            top: 10px;
-            color: #aaa;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .close:hover,
-        .close:focus {
-            color: #000;
-        }
-        .chapter-button {
-            display: block;
-            width: 100%;
-            text-align: left;
-            padding: 12px 18px;
-            margin: 8px 0;
-            background-color: #f3e5f5;
-            border: none;
-            border-radius: 6px;
-            font-size: 1.0em;
-            font-weight: bold;
-            color: #4a148c;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            border-left: 4px solid #ec407a;
-            background: #fce4ec;
-        }
-        .chapter-button:hover {
-            background-color: #f8bbd0;
-        }
-        .back-button {
-            display: inline-block;
-            margin-bottom: 15px;
-            background-color: #e1bee7;
-            color: #4a148c;
-            padding: 8px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            border: none;
-            transition: background-color 0.3s;
-        }
-        .back-button:hover {
-            background-color: #d1c4e9;
-        }
-        .note-section-title {
-            margin-top: 15px;
-            font-size: 1.2em;
-            color: #ba68c8;
-            font-weight: bold;
-            border-bottom: 2px solid #ba68c8;
-            padding-bottom: 5px;
-        }
-        .note-item {
-            background: #fce4ec;
-            border-left: 4px solid #ec407a;
-            padding: 14px 20px;
-            margin: 12px 0;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            transition: transform 0.2s;
-        }
-        .note-item:hover {
-            transform: scale(1.02);
-        }
-        .note-item a {
-            color: #d81b60;
-            font-weight: 500;
-            text-decoration: none;
-        }
-        .note-item a:hover {
-            color: #ad1457;
-            text-decoration: underline;
-        }
-    </style>
-    """
+            background: rgba(5, 5, 15, 0.95);
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+        }}
 
-    # JavaScript for modal interactions
-    script_block = f"""
+        .modal.show {{
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }}
+
+        @keyframes fadeIn {{
+            from {{
+                opacity: 0;
+            }}
+
+            to {{
+                opacity: 1;
+            }}
+        }}
+
+        .modal-content {{
+            background: var(--card-bg);
+            max-width: 900px;
+            margin: 50px auto;
+            border-radius: 15px;
+            padding: 30px;
+            border: 1px solid var(--border-primary);
+            position: relative;
+        }}
+
+        .modal-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-secondary);
+        }}
+
+        .modal-title {{
+            font-size: 1.8rem;
+            color: var(--primary);
+        }}
+
+        .close-modal {{
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }}
+
+        .close-modal:hover {{
+            color: var(--accent);
+            background: rgba(255, 255, 255, 0.1);
+        }}
+
+        .back-button {{
+            display: inline-flex;
+            align-items: center;
+            background: rgba(255, 0, 255, 0.1);
+            color: var(--secondary);
+            border: 1px solid var(--border-secondary);
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }}
+
+        .back-button:hover {{
+            background: rgba(255, 0, 255, 0.2);
+        }}
+
+        .back-button i {{
+            margin-right: 8px;
+        }}
+
+        .chapters-container {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 18px;
+            margin-bottom: 30px;
+        }}
+
+        .chapter-card {{
+            background: rgba(15, 15, 35, 0.5);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 255, 255, 0.1);
+        }}
+
+        .chapter-card:hover {{
+            transform: translateY(-3px);
+            border-color: var(--primary);
+        }}
+
+        .chapter-icon {{
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: var(--secondary);
+        }}
+
+        .chapter-name {{
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--light);
+        }}
+
+        .notes-section {{
+            margin-top: 30px;
+        }}
+
+        .section-title {{
+            font-size: 1.4rem;
+            color: var(--accent);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--accent);
+        }}
+
+        .notes-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 18px;
+        }}
+
+        .note-card {{
+            background: rgba(15, 15, 35, 0.5);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }}
+
+        .note-card:hover {{
+            transform: translateY(-3px);
+            border-color: var(--accent);
+        }}
+
+        .note-card::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(to right, var(--accent), var(--secondary));
+        }}
+
+        .note-title {{
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 15px;
+            color: var(--light);
+            line-height: 1.4;
+        }}
+
+        .note-link {{
+            display: inline-flex;
+            align-items: center;
+            background: rgba(255, 255, 0, 0.1);
+            color: var(--accent);
+            padding: 10px 20px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 0, 0.2);
+            font-size: 0.9rem;
+        }}
+
+        .note-link:hover {{
+            background: rgba(255, 255, 0, 0.2);
+        }}
+
+        .note-link i {{
+            margin-left: 8px;
+        }}
+
+        footer {{
+            text-align: center;
+            padding: 30px 0;
+            margin-top: 40px;
+            color: #777;
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }}
+
+        .footer-logo {{
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }}
+
+        /* Responsive Design */
+        @media (max-width: 992px) {{
+            .subjects-grid {{
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }}
+
+            .modal-content {{
+                margin: 30px auto;
+                padding: 25px;
+            }}
+
+            .modal-title {{
+                font-size: 1.6rem;
+            }}
+
+            h1 {{
+                font-size: 2rem;
+            }}
+
+            .logo {{
+                font-size: 2.3rem;
+            }}
+        }}
+
+        @media (max-width: 768px) {{
+            .subjects-grid {{
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            }}
+
+            .chapters-container,
+            .notes-grid {{
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            }}
+
+            .stat-card {{
+                min-width: 130px;
+                padding: 15px;
+            }}
+
+            .stat-card .number {{
+                font-size: 1.4rem;
+            }}
+
+            .stat-card .label {{
+                font-size: 0.8rem;
+            }}
+        }}
+
+        @media (max-width: 576px) {{
+            .subjects-grid {{
+                grid-template-columns: 1fr;
+            }}
+
+            .chapters-container,
+            .notes-grid {{
+                grid-template-columns: 1fr;
+            }}
+
+            .modal-content {{
+                margin: 20px auto;
+                padding: 20px;
+            }}
+
+            .modal-header {{
+                flex-direction: column;
+                align-items: flex-start;
+            }}
+
+            .close-modal {{
+                position: absolute;
+                top: 15px;
+                right: 15px;
+            }}
+
+            h1 {{
+                font-size: 1.8rem;
+            }}
+
+            .logo {{
+                font-size: 2rem;
+            }}
+
+            .batch-title {{
+                font-size: 1rem;
+            }}
+        }}
+
+        @media (max-width: 400px) {{
+            .container {{
+                padding: 10px;
+            }}
+
+            .subject-card {{
+                padding: 20px 15px;
+            }}
+
+            .subject-name {{
+                font-size: 1.1rem;
+            }}
+
+            .subject-desc {{
+                font-size: 0.85rem;
+            }}
+        }}
+
+
+        .batch-title {{
+            font-size: 1rem;
+            word-break: break-word;
+            /* ✅ breaks long names */
+            text-align: center;
+            line-height: 1.4;
+            padding: 0 10px;
+        }}
+
+        /* Subject cards */
+        .subject-card {{
+            padding: 18px 12px;
+            /* ✅ less padding on mobile */
+        }}
+
+        .subject-name {{
+            font-size: 1.1rem;
+        }}
+
+        .subject-desc {{
+            font-size: 0.85rem;
+            line-height: 1.3;
+        }}
+
+        /* Modal adjustments for mobile */
+        @media (max-width: 576px) {{
+            .modal-content {{
+                margin: 10px auto;
+                padding: 15px;
+                width: 95%;
+            }}
+
+            .modal-title {{
+                font-size: 1.3rem;
+                line-height: 1.4;
+                word-break: break-word;
+                /* ✅ long subject names wrap */
+            }}
+
+            .notes-grid,
+            .chapters-container {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+
+        /* Stat cards stack better */
+        @media (max-width: 400px) {{
+            .stat-card {{
+                width: 100%;
+                max-width: 220px;
+            }}
+        }}
+
+
+        .subject-name {{
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-atom"></i>
+            </div>
+            <h1>๏ ʟᴜᴍɪɴᴏ ⇗ ˣᵖ</h1>
+            <div class="batch-title">{html.escape(batch_title)}</div>
+
+            <a class="telegram-join-button" href="https://t.me/luminoxpp" target="_blank">
+                <i class="fab fa-telegram-plane"></i> Join Telegram Channel
+            </a>
+        </header>
+
+        <main>
+            <div class="subjects-grid">
+                <!-- Subject cards will be generated by JavaScript -->
+            </div>
+        </main>
+
+        <footer>
+            <div class="footer-logo">๏ ʟᴜᴍɪɴᴏ ⇗ ˣᵖ</div>
+            <p>Generated by LuminO XP | Elegant Notes Portal</p>
+            <p>All rights reserved © 2023</p>
+        </footer>
+    </div>
+
+    <!-- Modal for subject details -->
+    <div id="subject-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title">Subject Title</h2>
+                <button class="close-modal" id="close-modal">&times;</button>
+            </div>
+            <div id="modal-body">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
     <script>
         const notesData = {notes_data_js};
-        let currentSubject = null;
+        const subjectMetadata = {subjects_metadata_js};
+
+        // DOM Elements
+        const subjectsGrid = document.querySelector('.subjects-grid');
+        const modal = document.getElementById('subject-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const closeModalBtn = document.getElementById('close-modal');
+
+        // Generate subject cards dynamically
+        Object.keys(notesData).forEach(subjectName => {{
+            const card = document.createElement('div');
+            card.className = 'subject-card';
+
+            const metadata = subjectMetadata[subjectName] || {{ icon: 'fas fa-book', desc: 'Notes and videos for this subject.' }};
+            const chapterCount = Object.keys(notesData[subjectName]).length;
+
+            card.innerHTML = `
+                <div class="subject-icon">
+                    <i class="${{metadata.icon}}"></i>
+                </div>
+                <h3 class="subject-name">${{subjectName}}</h3>
+                <p class="subject-desc">${{metadata.desc}}</p>
+                <div class="chapter-count">${{chapterCount}} ${{chapterCount === 1 ? 'Chapter' : 'Chapters'}}</div>
+            `;
+            card.addEventListener('click', () => openSubject(subjectName));
+            subjectsGrid.appendChild(card);
+        }});
+
+        // Open subject modal
         function openSubject(subjectName) {{
-            currentSubject = subjectName;
-            const modal = document.getElementById('notes-modal');
-            const body = document.getElementById('modal-body');
-            let html = `<h2>${{subjectName}}</h2>`;
-            html += `<span class="close" onclick="closeModal()">&times;</span>`;
-            const chapters = Object.keys(notesData[subjectName]);
-            chapters.forEach(ch => {{
-                const safeCh = ch.replace(/'/g, "\\\\'");
-                html += `<button class="chapter-button" onclick="openChapter('${{safeCh}}')">${{ch}}</button>`;
-            }});
-            body.innerHTML = html;
-            modal.classList.add('show');
+            modalTitle.textContent = subjectName;
+            modalBody.innerHTML = '';
+
+            const chapters = notesData[subjectName];
+            if (Object.keys(chapters).length > 0) {{
+                const chaptersSection = document.createElement('div');
+                chaptersSection.className = 'chapters-container';
+
+                Object.keys(chapters).forEach(chapterName => {{
+                    const chapterCard = document.createElement('div');
+                    chapterCard.className = 'chapter-card';
+                    chapterCard.innerHTML = `
+                        <div class="chapter-icon">
+                            <i class="fas fa-folder-open"></i>
+                        </div>
+                        <div class="chapter-name">${{chapterName}}</div>
+                    `;
+                    chapterCard.addEventListener('click', () => openChapter(subjectName, chapterName));
+                    chaptersSection.appendChild(chapterCard);
+                }});
+                modalBody.appendChild(chaptersSection);
+            }} else {{
+                modalBody.innerHTML += '<p>No chapters found for this subject.</p>';
+            }}
+             modal.classList.add('show');
         }}
-        function openChapter(chapterName) {{
-            const modal = document.getElementById('notes-modal');
-            const body = document.getElementById('modal-body');
-            const chapterData = notesData[currentSubject][chapterName];
-            let html = `<h2>${{chapterName}}</h2>`;
-            html += `<span class="close" onclick="closeModal()">&times;</span>`;
-            html += `<button class="back-button" onclick="openSubject('${{currentSubject.replace(/'/g, "\\\\'")}}')">← Back</button>`;
+
+        // Open chapter details
+        function openChapter(subjectName, chapterName) {{
+            modalBody.innerHTML = '';
+
+            const backButton = document.createElement('button');
+            backButton.className = 'back-button';
+            backButton.innerHTML = `<i class="fas fa-arrow-left"></i> Back to ${{subjectName}} Chapters`;
+            backButton.addEventListener('click', () => openSubject(subjectName));
+            modalBody.appendChild(backButton);
+
+            const chapterTitle = document.createElement('h3');
+            chapterTitle.className = 'section-title';
+            chapterTitle.textContent = chapterName;
+            modalBody.appendChild(chapterTitle);
+
+            const chapterData = notesData[subjectName][chapterName];
+            const notesGrid = document.createElement('div');
+            notesGrid.className = 'notes-grid';
+
+            let notesFound = false;
             if (chapterData['Notes'] && chapterData['Notes'].length > 0) {{
-                html += `<div class="note-section-title">Notes</div>`;
-                chapterData['Notes'].forEach(item => {{
-                    html += `<div class="note-item"><a href="${{item.url}}" target="_blank">${{item.name}}</a></div>`;
+                notesFound = true;
+                chapterData['Notes'].forEach(note => {{
+                    const noteCard = document.createElement('div');
+                    noteCard.className = 'note-card';
+                    noteCard.innerHTML = `
+                        <div class="note-title">${{note.name}}</div>
+                        <a href="${{note.url}}" target="_blank" class="note-link">
+                            Download PDF <i class="fas fa-download"></i>
+                        </a>
+                    `;
+                    notesGrid.appendChild(noteCard);
                 }});
             }}
             if (chapterData['DPP Notes'] && chapterData['DPP Notes'].length > 0) {{
-                html += `<div class="note-section-title">DPP Notes</div>`;
-                chapterData['DPP Notes'].forEach(item => {{
-                    html += `<div class="note-item"><a href="${{item.url}}" target="_blank">${{item.name}}</a></div>`;
+                notesFound = true;
+                chapterData['DPP Notes'].forEach(note => {{
+                    const noteCard = document.createElement('div');
+                    noteCard.className = 'note-card';
+                    noteCard.innerHTML = `
+                        <div class="note-title">${{note.name}}</div>
+                        <a href="${{note.url}}" target="_blank" class="note-link">
+                            Download PDF <i class="fas fa-download"></i>
+                        </a>
+                    `;
+                    notesGrid.appendChild(noteCard);
                 }});
             }}
-            body.innerHTML = html;
-            modal.classList.add('show');
+
+            if (notesFound) {{
+                modalBody.appendChild(notesGrid);
+            }} else {{
+                modalBody.innerHTML += '<p>No notes found for this chapter.</p>';
+            }}
         }}
+
+        // Close modal
         function closeModal() {{
-            const modal = document.getElementById('notes-modal');
             modal.classList.remove('show');
-            currentSubject = null;
         }}
+
+        // Event listeners
+        closeModalBtn.addEventListener('click', closeModal);
+        window.addEventListener('click', (e) => {{
+            if (e.target === modal) {{
+                closeModal();
+            }}
+        }});
     </script>
+</body>
+</html>
     """
-
-    # Build the HTML
-    html_parts: List[str] = []
-    html_parts.append("<!DOCTYPE html>")
-    html_parts.append("<html>\n<head>")
-    html_parts.append("    <meta charset=\"utf-8\">\n    <title>๏ ʟᴜᴍɪɴᴏ ⇗ ˣᵖ</title>")
-    html_parts.append(style_block)
-    html_parts.append(script_block)
-    html_parts.append("</head>\n<body>")
-    html_parts.append("<div class=\"container\">")
-    html_parts.append("    <h1>ɢᴇɴᴇʀᴀᴛᴇᴅ ʙʏ - ๏ ʟᴜᴍɪɴᴏ ⇗ ˣᵖ</h1>")
-    html_parts.append(f"    <h2 class=\"batch-title\">{html.escape(batch_title)} - Notes</h2>")
-    html_parts.append("    <a class=\"telegram-join-button\" href=\"https://t.me/luminoxpp\" target=\"_blank\">Join Telegram Channel</a>")
-    # Render subject buttons
-    for subject in data:
-        if subject == "Telegram Bot":
-            chapter_dict = next(iter(data[subject].values())) if data[subject] else {}
-            notes_list = chapter_dict.get("Notes", [])
-            bot_url = notes_list[0][1] if notes_list else "https://t.me/luminoxpp"
-            html_parts.append(
-                f"    <button class=\"subject-button\" onclick=\"window.open('{html.escape(bot_url)}', '_blank')\">{html.escape(subject)}</button>"
-            )
-        else:
-            safe_subject = subject.replace("'", "\\'")
-            html_parts.append(
-                f"    <button class=\"subject-button\" onclick=\"openSubject('{safe_subject}')\">{html.escape(subject)}</button>"
-            )
-    html_parts.append("</div>")  # container end
-    # Modal container
-    html_parts.append(
-        "<div id=\"notes-modal\" class=\"modal\">\n"
-        "  <div class=\"modal-content\">\n"
-        "    <div id=\"modal-body\"></div>\n"
-        "  </div>\n"
-        "</div>"
-    )
-    html_parts.append("</body>\n</html>")
-
     with open(output_path, 'w', encoding='utf-8') as f:
-        f.write("\n".join(html_parts))
+        f.write(html_content)
 
 # ----------- Telegram bot handlers -----------
 
